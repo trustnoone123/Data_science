@@ -1,4 +1,4 @@
-# Add LLM-powered Cypher query interface for Neo4j with FastMCP integration
+# LLM-powered Cypher query interface for Neo4j with FastMCP integration
 
 ## Description
 
