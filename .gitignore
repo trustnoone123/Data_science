@@ -1,0 +1,45 @@
+# Ignore all .pyc files
+*.pyc
+
+# Ignore the `__pycache__` directory
+__pycache__/
+
+# Ignore all files in the `temp` folder
+temp/
+
+# Ignore a specific file
+secret.env
+.env
+
+# Ignore all `.log` files in all folders
+*.log
+
+# uv and virtualenv related
+.venv/
+uv.lock
+.env
+
+# pre-commit cache
+.pre-commit-config.yaml~  # optional backup file
+.pre-commit-cache/        # if used in repo (rare)
+.cache/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+core/action_registry/test.py
+
+.history
+
+next_action_venv/
+cache/
+.history/
+next_action_venv/
+core/action_registry/action_service.py
+
+.vscode
+.pytest_cache
+.pnotes

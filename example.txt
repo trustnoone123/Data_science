@@ -1,0 +1,221 @@
+{
+  "actions": [
+    {
+      "metadata": {
+        "id": "action_1",
+        "name": "collect_vehicle_info",
+        "description": "Collects required vehicle details from the user through UI, screenshot, auto trigger, or manual input."
+      },
+      "behavior": {
+        "action_type": "utility",
+        "allowed_executors": ["ui", "ocr", "llm", "manual"],
+        "action_configuration": {
+          "tools": ["OCR Engine", "LLM", "Neo4j"],
+          "dependencies": ["OCR Model", "Prompt Templates"]
+        },
+        "allowed_input": ["user_id", "source_type", "text_input", "image_data"],
+        "dependencies": {}
+      },
+      "output": {
+        "expected_output": {
+          "status": "success",
+          "extracted_info": {
+            "make": "string",
+            "lot_number": "string",
+            "place": "string",
+            "year": "integer",
+            "cc": "integer"
+          },
+          "next_action": "action_2"
+        },
+        "validators_utilized": ["field_checker", "completeness_checker"],
+        "next_actions": ["action_2"]
+      }
+    },
+    {
+      "metadata": {
+        "id": "action_2",
+        "name": "text_translator",
+        "description": "Translates damage description or extracts damage keywords from input text."
+      },
+      "behavior": {
+        "action_type": "utility",
+        "allowed_executors": ["llm", "function", "tool"],
+        "action_configuration": {
+          "target_language": "en",
+          "model": "gpt-4o",
+          "confidence_threshold": 0.7
+        },
+        "allowed_input": ["raw_text", "source_language", "target_language"],
+        "dependencies": ["action_1"]
+      },
+      "output": {
+        "expected_output": {
+          "translated_text": "string",
+          "damage_keywords": ["list of strings"],
+          "confidence": "float"
+        },
+        "validators_utilized": ["language_validator", "keyword_presence_checker"],
+        "next_actions": ["action_3"]
+      }
+    },
+    {
+      "metadata": {
+        "id": "action_3",
+        "name": "shipment_analysis",
+        "description": "Analyzes the shipment route, hub availability, and estimated delivery timelines."
+      },
+      "behavior": {
+        "action_type": "third_party_api_call",
+        "allowed_executors": ["function", "rpc", "third_party_api"],
+        "action_configuration": {
+          "shipping_api": "ShipXpressAPI",
+          "geo_validation_enabled": true
+        },
+        "allowed_input": ["pickup_location", "drop_location", "vehicle_type"],
+        "dependencies": {"action_1"}
+      },
+      "output": {
+        "expected_output": {
+          "estimated_time_days": "integer",
+          "available_hubs": ["list of hub names"],
+          "pickup_valid": "boolean"
+        },
+        "validators_utilized": ["hub_validator", "route_checker"],
+        "next_actions": ["action_4"]
+      }
+    },
+    {
+      "metadata": {
+        "id": "action_4",
+        "name": "pricing_summary",
+        "description": "Predicts minimum and maximum bid prices and generates a pricing summary."
+      },
+      "behavior": {
+        "action_type": "train_model",
+        "allowed_executors": ["ml_model", "llm", "rpc"],
+        "action_configuration": {
+          "model_name": "LightGBM",
+          "features": ["make", "year", "km", "cc", "start_price"],
+          "output_range_enforced": true
+        },
+        "allowed_input": ["make", "year", "km", "cc", "start_price"],
+        "dependencies": {"action_1"}
+      },
+      "output": {
+        "expected_output": {
+          "predicted_min_bid": "float",
+          "predicted_max_bid": "float",
+          "recommendation_message": "string"
+        },
+        "validators_utilized": ["price_validator", "range_checker"],
+        "next_actions": []
+      }
+    }
+  ]
+}
+
+#--------------------------Transaction Meta Data----------------------------------------
+
+{
+  "transaction_id": "txn_{{unique_id}}",
+  "timestamp": "{{execution_start_time}}",
+  "initiated_by": "{{user_id}}",
+  "execution_trace": [
+    {
+      "action_id": "action_1",
+      "executor": "{{ui}}",
+      "input_provided": {
+        "user_id": "{{user_id}}",
+        "source_type": "{{source}}",
+        "text_input": "{{optional_text}}",
+        "image_data": "{{optional_image}}"
+      },
+      "tools_used": ["OCR Engine", "LLM", "Neo4j"],
+      "dependencies": {"OCR Model", "Prompt Templates"},
+      "output": {
+        "status": "success",
+        "extracted_info": {
+          "make": "{{string}}",
+          "lot_number": "{{string}}",
+          "place": "{{string}}",
+          "year": "{{integer}}",
+          "cc": "{{integer}}"
+        },
+        "next_action": "action_2"
+      },
+      "validators_run": ["field_checker", "completeness_checker"]
+    },
+    {
+      "action_id": "action_2",
+      "executor": "{{llm}}",
+      "input_provided": {
+        "raw_text": "{{damage_description_text}}",
+        "source_language": "{{source_lang}}",
+        "target_language": "en"
+      },
+      "model": "gpt-4o",
+      "confidence_threshold": 0.7,
+      "output": {
+        "translated_text": "{{translated_text}}",
+        "damage_keywords": ["{{keyword1}}", "{{keyword2}}"],
+        "confidence": {{confidence_score}}
+      },
+      "validators_run": ["language_validator", "keyword_presence_checker"],
+      "next_action": "action_3"
+    },
+    {
+      "action_id": "action_3",
+      "executor": "{{rpc}}",
+      "input_provided": {
+        "pickup_location": "{{place_from_action_1}}",
+        "drop_location": "{{destination_location}}",
+        "vehicle_type": "{{derived_from_info}}"
+      },
+      "api_used": "ShipXpressAPI",
+      "geo_validation_enabled": true,
+      "output": {
+        "estimated_time_days": {{days}},
+        "available_hubs": ["{{hub1}}", "{{hub2}}"],
+        "pickup_valid": {{true_or_false}}
+      },
+      "validators_run": ["hub_validator", "route_checker"],
+      "next_action": "action_4"
+    },
+    {
+      "action_id": "action_4",
+      "executor": "{{ml_model}}",
+      "input_provided": {
+        "make": "{{make}}",
+        "year": {{year}},
+        "km": {{km}},
+        "cc": {{cc}},
+        "start_price": {{start_price}}
+      },
+      "model_used": "LightGBM",
+      "features": ["make", "year", "km", "cc", "start_price"],
+      "output_range_enforced": true,
+      "output": {
+        "predicted_min_bid": {{float_value}},
+        "predicted_max_bid": {{float_value}},
+        "recommendation_message": "{{text_summary}}"
+      },
+      "validators_run": ["price_validator", "range_checker"]
+    }
+  ],
+  "status": "success | failed | partial",
+  "output": {
+    "pricing_summary": {
+      "min_bid": "{{predicted_min_bid}}",
+      "max_bid": "{{predicted_max_bid}}",
+      "message": "{{recommendation_message}}"
+    },
+    "shipment": {
+      "time_days": "{{estimated_time_days}}",
+      "hubs": ["{{hub1}}", "{{hub2}}"],
+      "pickup_valid": "{{true_or_false}}"
+    },
+    "translated_damage_description": "{{translated_text}}",
+    "keywords": ["{{keyword1}}", "{{keyword2}}"]
+  }
+}
